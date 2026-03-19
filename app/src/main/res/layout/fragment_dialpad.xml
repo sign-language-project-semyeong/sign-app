@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFFFFF"
+    android:padding="16dp">
+
+    <EditText
+        android:id="@+id/number_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="100dp"
+        android:background="@null"
+        android:gravity="center"
+        android:hint="010-0000-0000"
+        android:textColor="#000000"
+        android:textSize="36sp"
+        android:textIsSelectable="true" />
+
+    <GridLayout
+        android:id="@+id/keypad_grid"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/bottom_action_bar"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="10dp"
+        android:layout_marginHorizontal="30dp"
+        android:columnCount="3"
+        android:rowCount="4">
+
+        <Button android:id="@+id/btn_1" style="@style/Widget.MaterialComponents.Button.TextButton" android:text="1" android:textSize="35sp" />
+        <Button android:id="@+id/btn_2" style="@style/Widget.MaterialComponents.Button.TextButton" android:text="2" android:textSize="35sp" />
+        <Button android:id="@+id/btn_3" style="@style/Widget.MaterialComponents.Button.TextButton" android:text="3" android:textSize="35sp" />
+        <Button android:id="@+id/btn_4" style="@style/Widget.MaterialComponents.Button.TextButton" android:text="4" android:textSize="35sp" />
+        <Button android:id="@+id/btn_5" style="@style/Widget.MaterialComponents.Button.TextButton" android:text="5" android:textSize="35sp" />
+        <Button android:id="@+id/btn_6" style="@style/Widget.MaterialComponents.Button.TextButton" android:text="6" android:textSize="35sp" />
+        <Button android:id="@+id/btn_7" style="@style/Widget.MaterialComponents.Button.TextButton" android:text="7" android:textSize="35sp" />
+        <Button android:id="@+id/btn_8" style="@style/Widget.MaterialComponents.Button.TextButton" android:text="8" android:textSize="35sp" />
+        <Button android:id="@+id/btn_9" style="@style/Widget.MaterialComponents.Button.TextButton" android:text="9" android:textSize="35sp" />
+        <Button android:id="@+id/btn_star" style="@style/Widget.MaterialComponents.Button.TextButton" android:text="*" android:textSize="35sp" />
+        <Button android:id="@+id/btn_0" style="@style/Widget.MaterialComponents.Button.TextButton" android:text="0" android:textSize="35sp" />
+        <Button android:id="@+id/btn_sharp" style="@style/Widget.MaterialComponents.Button.TextButton" android:text="#" android:textSize="35sp" />
+    </GridLayout>
+
+    <LinearLayout
+        android:id="@+id/bottom_action_bar"
+        android:layout_width="match_parent"
+        android:layout_height="100dp"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="20dp"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/btn_video_call"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
+            android:layout_marginEnd="20dp"
+            android:visibility="invisible"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/presence_video_online"
+            android:scaleType="fitCenter"
+            android:padding="15dp"
+            app:tint="#4CAF50" /> <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btn_call"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:backgroundTint="#4CAF50"
+        android:src="@android:drawable/ic_menu_call"
+        app:fabCustomSize="70dp"
+        app:maxImageSize="35dp"
+        app:tint="#FFFFFF" />
+
+        <ImageButton
+            android:id="@+id/btn_delete"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
+            android:layout_marginStart="20dp"
+            android:visibility="invisible"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_input_delete"
+            android:scaleType="fitCenter"
+            android:padding="15dp"
+            app:tint="#757575" /> </LinearLayout>
+</RelativeLayout>
