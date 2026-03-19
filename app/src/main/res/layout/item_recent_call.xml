@@ -36,13 +36,15 @@
         android:orientation="horizontal"
         android:gravity="center"
         android:layout_marginTop="15dp"
-        android:visibility="gone"> <ImageButton
-        android:id="@+id/btn_item_call"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
-        android:background="?android:attr/selectableItemBackgroundBorderless"
-        android:src="@android:drawable/ic_menu_call"
-        app:tint="#4CAF50" />
+        android:visibility="gone">
+
+        <ImageButton
+            android:id="@+id/btn_item_call"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_call"
+            app:tint="#4CAF50" />
 
         <ImageButton
             android:id="@+id/btn_item_message"
@@ -59,7 +61,8 @@
             android:layout_height="50dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:src="@android:drawable/presence_video_online"
+            android:scaleType="fitCenter"
+            android:padding="8dp"
             app:tint="#4CAF50" />
-    </LinearLayout>
 
-</LinearLayout>
+    </LinearLayout> </LinearLayout>

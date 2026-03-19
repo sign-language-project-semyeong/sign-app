@@ -1,13 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="#E0E0E0">
+    android:layout_height="match_parent">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/contacts_recycler"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_toStartOf="@+id/side_index_view" />
 
     <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:text="연@락처 목록 똬@악 가져올게 유남생?!?"
-        android:textSize="20sp" />
-</FrameLayout>
+        android:id="@+id/tv_index_overlay"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:layout_centerInParent="true"
+        android:background="@android:drawable/toast_frame"
+        android:backgroundTint="#88000000"
+        android:gravity="center"
+        android:textColor="#FFFFFF"
+        android:textSize="40sp"
+        android:textStyle="bold"
+        android:visibility="gone" /> <com.bro.signtalk.ui.custom.SideIndexView
+    android:id="@+id/side_index_view"
+    android:layout_width="30dp"
+    android:layout_height="match_parent"
+    android:layout_alignParentEnd="true"
+    android:layout_marginVertical="50dp" />
+
+</RelativeLayout>
