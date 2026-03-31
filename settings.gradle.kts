@@ -4,6 +4,7 @@ pluginManagement {
             content {
                 includeGroupByRegex("com\\.android.*")
                 includeGroupByRegex("com\\.google.*")
+                includeGroupByRegex("com\\.google.*")
                 includeGroupByRegex("androidx.*")
             }
         }
@@ -16,6 +17,9 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+
+        // [필살기] 이@게 없어서 uCrop을 못 사왔던 거다 이말이야! 똬악 박아라!
+        maven { url = uri("https://jitpack.io") }
     }
 }
 

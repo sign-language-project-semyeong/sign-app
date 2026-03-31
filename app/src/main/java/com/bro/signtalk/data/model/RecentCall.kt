@@ -1,16 +1,14 @@
-// 위치: java/com/bro/signtalk/data/model/RecentCall.kt
 package com.bro.signtalk.data.model
 
-// [핵심] 데이터만 담는 깔끔한 그릇이다 이말이야!
-data class RecentCall(
-    val id: Long,
-    val name: String,        // 이름
-    val phoneNumber: String, // 번호
-    val callTime: String,    // 시간 (오후 1:11)
-    val date: String,        // 날짜 (오늘, 어제)
-    val type: CallType       // 수신/발신/부재중 구분!
-)
+import java.io.Serializable
 
-enum class CallType {
-    INCOMING, OUTGOING, MISSED
-}
+// [팩폭] 파라미터 순서랑 타입이 이@렇게 되어 있어야 한다 이말이야!
+data class RecentCall(
+    val phoneNumber: String,
+    val name: String,
+    val callTime: String,
+    val type: CallType,
+    val dateGroup: String,
+    val timestamp: Long, // [필살기] 진짜 DB 지울 때 쓰는 핵심 키다!
+    var isBlocked: Boolean = false
+)

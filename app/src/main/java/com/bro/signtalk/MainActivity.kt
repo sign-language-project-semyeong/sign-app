@@ -6,48 +6,143 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.telecom.TelecomManager
 import android.util.Log
+import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.PopupMenu
 import androidx.core.telecom.CallAttributesCompat
 import androidx.core.telecom.CallsManager
-import androidx.fragment.app.Fragment // [수정] 임포트 추가!
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.bro.signtalk.ui.CallActivity
-import com.google.android.material.bottomnavigation.BottomNavigationView // [수정] 임포트 추가!
+import com.bro.signtalk.ui.SettingsActivity
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import kotlinx.coroutines.launch
 import com.bro.signtalk.ui.DialpadFragment
-import com.bro.signtalk.ui.RecentCallsFragment
+import com.bro.signtalk.ui.recent.RecentCallsFragment
 import com.bro.signtalk.ui.ContactsFragment
-class MainActivity : AppCompatActivity() {
+import android.provider.Settings
 
+class MainActivity : AppCompatActivity() {
     private val TAG = "SignTalk_Main"
     private lateinit var callsManager: CallsManager
 
+    // registerPhoneAccount랑 startManagedCall에서 쓰는 ID를 통일해라!
+    // MainActivity.kt 에서 ID를 하나로 통일해라!
+    private val HANDLE_ID = "SignTalk_Handle_ID"
+
+    // MainActivity.kt - 이@게 진짜 정답이다 이말이야!
+
+    // MainActivity.kt - 이게 진짜 갤럭시 전화 대체용 발신 엔진이다!
+
+    // MainActivity.kt
+    // MainActivity.kt
+
+    // [팩폭] 이제 이 함수는 껍데기만 남겨라!
+// 진짜 갤럭시 전화처럼 쓸 거면 시스템 엔진(SIM)이 대장이라서 등록할 필요가 없다 이말이야!
+    private fun registerPhoneAccount(context: Context) {
+        // 쫀득하게 로그만 남기고 아무것도 하지 마라!
+        Log.d(TAG, "이제 가@짜 엔진 등록 따위 안 한다 이말이야! 유남생?!?")
+    }
+
+    // setupCoreTelecom도 깔@롱하게 정리해라!
+
+    // [필살기] 이 함수 하나면 진짜 전화가 찰지게 터진다!
+    // MainActivity.kt
+    // MainActivity.kt 의 makeCarrierCall 함수를 싹 다 이걸로 교체해라!
+
+    // [필살기] 영상/음성 다 받아주는 쌈뽕한 만능 엔진이다 이말이야!
+    // [필살기] 영상/음성 다 받아주는 쌈뽕한 만능 엔진이다 이말이야!
+    fun makeCarrierCall(phoneNumber: String, isVideo: Boolean = false) {
+        if (phoneNumber.isEmpty()) {
+            Toast.makeText(this, "번호 똑@바로 안 치냐?!? 팍@씨!", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // 숫자만 쫀득하게 남기기!
+        val cleanNumber = phoneNumber.replace(Regex("[^0-9]"), "")
+        val uri = Uri.parse("tel:$cleanNumber")
+
+        try {
+            if (checkSelfPermission(android.Manifest.permission.CALL_PHONE) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                val telecomManager = getSystemService(Context.TELECOM_SERVICE) as TelecomManager
+
+                // [핵심] 시스템한테 "이건 영상통화다!"라고 편지(Extras)를 써서 같이 보내야 한다!
+                val extras = Bundle().apply {
+                    if (isVideo) {
+                        putInt(TelecomManager.EXTRA_START_CALL_WITH_VIDEO_STATE, android.telecom.VideoProfile.STATE_BIDIRECTIONAL)
+                    }
+                }
+
+                // 편지랑 같이 발신 신호탄 똬악!
+                telecomManager.placeCall(uri, extras)
+                Log.d(TAG, "통신사 망으로 진짜 전@화 심부름 보냈다 (영상모드: $isVideo) 유남생?!?")
+            } else {
+                // 권한 없으면 멱살 잡고 요청해라!
+                requestPermissions(arrayOf(android.Manifest.permission.CALL_PHONE), 100)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "심부름 실패: ${e.message}")
+        }
+    }
+    // [필살기] 에러 났던 RequestRole 대신 호환성 쩌는 StartActivityForResult로 원복!
     private val roleRequestLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == RESULT_OK) {
-            Log.d(TAG, "이제 내가 대장이다 이말이야!")
-            setupCoreTelecom()
-        } else {
-            Toast.makeText(this, "권한 줘라 브@로!", Toast.LENGTH_SHORT).show()
+        // 결과가 어떻든 일단 기강 잡으러 들어간다!
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val roleManager = getSystemService(RoleManager::class.java)
+            if (roleManager.isRoleHeld(RoleManager.ROLE_DIALER)) {
+                Log.d(TAG, "임명장 획득 완@료! 이제 내가 대장이다 ㅇㅇ.")
+                setupCoreTelecom()
+            } else {
+                Toast.makeText(this, "기본 앱 설정을 해야 전@화를 받는다 브@로!", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
+    // 클래스 상단 (onCreate 위쪽)에 이게 있어야 에러 안 난다 유남생?!?
+    private val requestPermissionsLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.entries.all { it.value }
+
+        if (allGranted) {
+            Log.d(TAG, "기강 잡기 성공! 이제 대장 자리(Role) 받으러 간다 이말이야! ㅇㅇ.")
+            // [핵심] 권한 다 얻었을 때만 기본 앱 설정 팝업 소환!
+            checkDefaultDialerRole()
+        } else {
+            Toast.makeText(this, "권한 안 주면 전@화 대장 못 한다 브@로! 팍@씨!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // MainActivity.kt 수정안
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        checkDefaultDialerRole()
+        // 1. 기본 앱 설정이랑 오버레이 권한을 여기서 먼저 굽@신굽@신 해라 ㅇㅇ
+        checkOverlayPermission()
 
-        // [핵심] 하단 내비게이션 연결이다 이말이야 유남생?!?
-        val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation)
-
-        if (savedInstanceState == null) {
-            loadFragment(DialpadFragment())
+        // 2. [쌈뽕] 나머지 UI 리스너 및 네비게이션 설정 찰@지게 세팅!
+        findViewById<View>(R.id.btn_main_more_menu)?.setOnClickListener { view ->
+            val popup = PopupMenu(this, view)
+            popup.menuInflater.inflate(R.menu.menu_main, popup.menu)
+            popup.setOnMenuItemClickListener { item ->
+                if (item.itemId == R.id.action_settings) {
+                    startActivity(Intent(this, SettingsActivity::class.java))
+                    true
+                } else false
+            }
+            popup.show()
         }
+
+        // 네비게이션 바 설정도 onCreate 뱃속에 얌전히 둬라 이말이야!
+        val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation)
+        if (savedInstanceState == null) loadFragment(DialpadFragment())
 
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
@@ -57,9 +152,69 @@ class MainActivity : AppCompatActivity() {
                 else -> false
             }
         }
+    }
 
-        // [주의] 만약 기존 테스트 버튼을 쓰고 싶으면 XML에 버튼이 살아있어야 한다 이말이야!
-        // findViewById<Button>(R.id.btn_test_call)?.setOnClickListener { simulateIncomingCall() }
+    // 3. [필살기] 화면이 확실히 뜰 때 권한 팝업을 멱@살 잡고 소환해라!
+// 팩폭: onCreate 바깥으로 완전히 독립시켜야 에러가 안 난다 유남생?!?
+    override fun onResume() {
+        super.onResume()
+        checkAndRequestPermissions()
+    }
+
+    // [쌈뽕] 연락처랑 통화 권한이 있는지 확인하고 없으면 멱살 잡고 요청하는 함수다 이말이야!
+    private fun checkAndRequestPermissions() {
+        val permissions = arrayOf(
+            android.Manifest.permission.READ_CONTACTS,
+            android.Manifest.permission.CALL_PHONE,
+            android.Manifest.permission.READ_PHONE_STATE
+        )
+
+        // 권한 없는 놈들만 골라내기!
+        val missingPermissions = permissions.filter {
+            checkSelfPermission(it) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        }.toTypedArray()
+
+        if (missingPermissions.isNotEmpty()) {
+            // [쫀득] 아까 만든 requestPermissionsLauncher로 쏜다!
+            requestPermissionsLauncher.launch(missingPermissions)
+            Log.d(TAG, "부@족한 권한들 떼거지로 요청 보냈다 이말이야 ㅇㅇ.")
+        } else {
+            Log.d(TAG, "이미 권한 기강 다 잡혀있다 브@로! 통과!")
+        }
+    }
+
+    // [쌈뽕] 필요한 권한들 한꺼번에 멱살 잡고 요청하는 런처!
+
+
+    // [핵심/팩폭] 중복됐던 함수 하나로 통합! 두 번 쓰지 마라 브로!
+    private fun checkDefaultDialerRole() {
+        val telecomManager = getSystemService(Context.TELECOM_SERVICE) as TelecomManager
+
+        // [팩폭] 이미 대장이면 다시 부를 필요 없다!
+        if (telecomManager.defaultDialerPackage == packageName) {
+            Log.d(TAG, "이미 내가 대장이다 이말이야! ㅇㅇ.")
+            setupCoreTelecom()
+            return
+        }
+
+        // [쌈뽕] 안드로이드 10(Q) 이상은 RoleManager로 멱살 잡아야 한다!
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val roleManager = getSystemService(Context.ROLE_SERVICE) as RoleManager
+            if (!roleManager.isRoleHeld(RoleManager.ROLE_DIALER)) {
+                val intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_DIALER)
+                roleRequestLauncher.launch(intent) // [쫀득] 팝업 똬악!
+                Log.d(TAG, "RoleManager로 팝업 소환 발사! 유남생?!?")
+            }
+            // MainActivity.kt 수정
+        } else {
+            // 안드로이드 10 미만은 RoleManager가 없으니깐 구식 시스템 방식으로 띄우는 거다!
+            val intent = Intent(this, CallActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                // [팩폭] 여기엔 'call' 객체가 없다! 그냥 빈 값이나 넘겨라!
+                putExtra("receiver_phone", "")
+            }
+            startActivity(intent)
+        }
     }
 
     private fun loadFragment(fragment: Fragment): Boolean {
@@ -73,23 +228,44 @@ class MainActivity : AppCompatActivity() {
         callsManager = CallsManager(this)
         val capabilities = CallsManager.CAPABILITY_BASELINE or
                 CallsManager.CAPABILITY_SUPPORTS_VIDEO_CALLING
-
         callsManager.registerAppWithTelecom(capabilities)
-        Log.d(TAG, "Core-Telecom 등록 완@료!")
+
+        // registerPhoneAccount(this) // 이것도 굳이 부를 필요 없다 이말이야!
+        Log.d(TAG, "Jetpack Telecom SDK만 찰@지게 가동 완료! ㅇㅇ.")
     }
 
-    fun simulateIncomingCall() {
-        // 1. alpha03 버전은 callCapabilities가 그냥 Int(정수)다 이말이야!
-        val capabilities = CallAttributesCompat.SUPPORTS_SET_INACTIVE
 
-        // 2. [핵심] 인자를 딱 5개만, 이 순서대로 박아라 이말이야!
+
+    // [필살기] 음성/영상 둘 다 찰지게 지원하는 발신 엔진!
+
+    // MainActivity.kt에 추가해라 브로!
+    private fun checkOverlayPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!Settings.canDrawOverlays(this)) {
+                // [쫀득] 권한 없으면 설정창으로 멱살 잡고 끌고 가기!
+                val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
+                startActivity(intent)
+                Toast.makeText(this, "수신 화면 띄우려면 '다른 앱 위에 표시' 권한 줘라 브@로!", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    // MainActivity.kt 등에서 호출할 발신 코드다 이말이지!
+    // MainActivity.kt - 진짜 전@화 터뜨리는 법!
+    // [핵심] 프로젝트에서 startManagedCall 함수는 아예 지워버려라!
+// 오직 이 'makeCarrierCall' 하나로 통일하는 거다 이말이야 ㅇㅇ.
+
+
+
+    fun simulateIncomingCall() {
+        val capabilities = CallAttributesCompat.SUPPORTS_SET_INACTIVE
         val attributes = CallAttributesCompat(
-            "수@어 브@로",                       // 1. displayName (CharSequence)
-            Uri.parse("tel:01012345678"),        // 2. address (Uri)
-            CallAttributesCompat.DIRECTION_INCOMING, // 3. direction (Int)
-            CallAttributesCompat.CALL_TYPE_VIDEO_CALL, // 4. callType (Int)
-            capabilities                         // 5. callCapabilities (Int)
-        ) // 여기서 괄호 딱! 닫아라 이말이야 유남생?!?
+            "수@어 브@로",
+            Uri.parse("tel:01012345678"),
+            CallAttributesCompat.DIRECTION_INCOMING,
+            CallAttributesCompat.CALL_TYPE_VIDEO_CALL,
+            capabilities
+        )
 
         lifecycleScope.launch {
             try {
@@ -100,7 +276,6 @@ class MainActivity : AppCompatActivity() {
                     onSetActive = { Log.d(TAG, "활성!") },
                     onSetInactive = { Log.d(TAG, "대기!") }
                 ) {
-                    // CallControlScope 진입! 여기서 UI 띄워라 이말이야!
                     val intent = Intent(this@MainActivity, CallActivity::class.java).apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
@@ -113,7 +288,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun launchCallUI() {
-        // [오류 4 해결] 안전하게 Activity 실행하는 비기!
         val intent = Intent(this, CallActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
@@ -121,15 +295,7 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "CallActivity 쌈@뽕하게 소환!")
     }
 
-    private fun checkDefaultDialerRole() {
-        val roleManager = getSystemService(Context.ROLE_SERVICE) as RoleManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            if (!roleManager.isRoleHeld(RoleManager.ROLE_DIALER)) {
-                val intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_DIALER)
-                roleRequestLauncher.launch(intent)
-            } else {
-                setupCoreTelecom() // 이미 기본 앱이면 바로 등록!
-            }
-        }
+    fun getCurrentCall(): android.telecom.Call? {
+        return com.bro.signtalk.service.SignCallService.currentCall
     }
 }

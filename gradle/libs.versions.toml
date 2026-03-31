@@ -11,6 +11,8 @@ activity = "1.8.0"
 constraintlayout = "2.1.4"
 
 [libraries]
+# ... 기존 내용들 놔두고 아래 똬악 추가!
+webrtc = { group = "io.github.webrtc-sdk", name = "android", version = "125.6422.06.1" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }

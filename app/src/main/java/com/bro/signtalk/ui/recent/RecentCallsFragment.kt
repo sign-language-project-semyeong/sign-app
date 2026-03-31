@@ -1,41 +1,108 @@
 package com.bro.signtalk.ui.recent
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast // [핵심] 이거 없으면 Toast에서 빨간 줄 뜬다 이말이야!
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bro.signtalk.R
 import com.bro.signtalk.data.model.CallType
 import com.bro.signtalk.data.model.RecentCall
+import com.bro.signtalk.ui.DateUtils
 
 // [팩폭] Fragment 상속 안 받으면 넌 그냥 일반 클래스일 뿐이다 브로!
 class RecentCallsFragment : Fragment() {
+    private lateinit var recyclerView: RecyclerView
+    private lateinit var adapter: RecentCallsAdapter
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        // 도화지(XML)를 먼저 깔아줘야 한다 이말이야!
         return inflater.inflate(R.layout.fragment_recent_calls, container, false)
     }
 
-    // RecentCallsFragment.kt 내부 onViewCreated
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        recyclerView = view.findViewById(R.id.recent_calls_recycler)
+        recyclerView.layoutManager = LinearLayoutManager(requireContext())
+        checkPermissionsAndLoad()
+    }
 
-        val recyclerView = view.findViewById<RecyclerView>(R.id.recent_calls_recycler)
+    private fun checkPermissionsAndLoad() {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_CALL_LOG)
+            == PackageManager.PERMISSION_GRANTED) {
+            val realData = fetchCallLogs()
+            adapter = RecentCallsAdapter(realData)
+            recyclerView.adapter = adapter
+        } else {
+            requestPermissions(arrayOf(Manifest.permission.READ_CALL_LOG), 200)
+        }
+    }
 
-        // [팩폭] 데이터 없으면 리스트 안 뜬다! 가짜 데이터 찰지게 넣어라!
-        val dummyData = listOf(
-            RecentCall(1, "김@삼@성", "010-1234-5678", "오후 1:11", "오늘", com.bro.signtalk.data.model.CallType.INCOMING),
-            RecentCall(2, "", "010-9999-8888", "오전 10:05", "오늘", com.bro.signtalk.data.model.CallType.MISSED),
-            RecentCall(3, "수@어 브@로", "010-5555-4444", "어제", "어제", com.bro.signtalk.data.model.CallType.OUTGOING)
-        )
+    override fun onResume() {
+        super.onResume()
+        if (::adapter.isInitialized) {
+            loadRecentCalls()
+            Log.d("RecentCalls", "화면 복귀! 캘린더 날짜 쫀득하게 갱신 완료! ㅇㅇ.")
+        }
+    }
 
-        recyclerView.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(context)
-        recyclerView.adapter = RecentCallsAdapter(dummyData) // 어@댑터 장착 완료!
+    private fun loadRecentCalls() {
+        val calls = fetchCallLogs()
+        adapter.updateItems(calls)
+    }
+
+    // [필살기] 중복 삭제하고 캘린더 엔진 꽂은 이 녀석 하나만 남겨라!
+    private fun fetchCallLogs(): List<RecentCall> {
+        val callList = mutableListOf<RecentCall>()
+        val cursor = try {
+            requireContext().contentResolver.query(
+                android.provider.CallLog.Calls.CONTENT_URI,
+                null, null, null,
+                "${android.provider.CallLog.Calls.DATE} DESC"
+            )
+        } catch (e: SecurityException) { return emptyList() }
+
+        cursor?.use {
+            val nameIndex = it.getColumnIndex(android.provider.CallLog.Calls.CACHED_NAME)
+            val numberIndex = it.getColumnIndex(android.provider.CallLog.Calls.NUMBER)
+            val typeIndex = it.getColumnIndex(android.provider.CallLog.Calls.TYPE)
+            val dateIndex = it.getColumnIndex(android.provider.CallLog.Calls.DATE)
+
+            while (it.moveToNext()) {
+                val name = if (nameIndex != -1) it.getString(nameIndex) ?: "" else ""
+                val number = if (numberIndex != -1) it.getString(numberIndex) ?: "번호 없음" else "번호 없음"
+                val typeRaw = if (typeIndex != -1) it.getInt(typeIndex) else 1
+                val timestamp = if (dateIndex != -1) it.getLong(dateIndex) else System.currentTimeMillis()
+
+                val callType = when (typeRaw) {
+                    android.provider.CallLog.Calls.INCOMING_TYPE -> CallType.INCOMING
+                    android.provider.CallLog.Calls.OUTGOING_TYPE -> CallType.OUTGOING
+                    android.provider.CallLog.Calls.MISSED_TYPE -> CallType.MISSED
+                    else -> CallType.INCOMING
+                }
+
+                // [쫀득] 아까 만든 DateUtils 엔진으로 캘린더 날짜 똬@악 낚아채기!
+                val dateGroup = DateUtils.getDateGroupName(timestamp)
+
+                callList.add(RecentCall(
+                    phoneNumber = number,
+                    name = name,
+                    callTime = java.text.SimpleDateFormat("HH:mm", java.util.Locale.KOREAN).format(timestamp),
+                    type = callType,
+                    dateGroup = dateGroup,
+                    timestamp = timestamp
+                ))
+            }
+        }
+        return callList
     }
 }

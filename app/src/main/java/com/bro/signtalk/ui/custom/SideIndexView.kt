@@ -20,31 +20,70 @@ class SideIndexView @JvmOverloads constructor(
         isAntiAlias = true
     }
 
-    // [핵심] 브로가 손가락으로 누를 때마다 어떤 글자인지 알려주는 리스너!
+    private var indices: List<String> = emptyList()
+
+    // [팩폭] 이게 없어서 에러 난 거다! 외부에서 존재하는 초성만 넘겨주는 입구!
+    fun setIndices(newIndices: List<String>) {
+        this.indices = newIndices
+        // [필살기] 데이터 바뀌었으면 다시 그려야지 유남생?!?
+        invalidate()
+        requestLayout() // [핵심] 이거 있어야 높이 다시 계산해서 똬악 나타난다!
+    }
+    // 1. [필살기] 내 몸집(높이)을 스스로 결정하는 로직이다 이말이야!
+    // 1. [필살기] 황@금 비율 높이 계산 드간다!
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val drawList = if (indices.isNotEmpty()) indices else indexList.toList()
+        val density = context.resources.displayMetrics.density
+
+        // [필살기] 기존 38dp에서 26dp로 슬림하게 다이어트!
+        // 그래야 리스트 시야를 0.1초 만에 확보한다 이말이야!
+        val itemSize = (26 * density).toInt()
+
+        val desiredHeight = drawList.size * itemSize
+        // [쫀득] 너비도 35dp에서 24dp로 줄여서 공간 낭비 성불시켜라!
+        val desiredWidth = (24 * density).toInt()
+
+        setMeasuredDimension(desiredWidth, desiredHeight)
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        val itemHeight = height / indexList.size
-        for (i in indexList.indices) {
-            val yPos = (itemHeight * i) + (itemHeight / 2f)
-            canvas.drawText(indexList[i], width / 2f, yPos, paint)
+
+        val drawList = if (indices.isNotEmpty()) indices else indexList.toList()
+        if (drawList.isEmpty()) return
+
+        // [팩폭] 바가 슬림해졌으니 글자 크기도 35f에서 28f 정도로 0.1초 만에 다이어트!
+        paint.color = Color.parseColor("#880E4F") // 딥 마젠타 포인트!
+        paint.textSize = 28f
+        paint.isFakeBoldText = true // [쫀득] 얇아진 대신 두껍게 해서 가독성 챙겨라!
+
+        val itemHeight = height.toFloat() / drawList.size
+
+        for (i in drawList.indices) {
+            val xPos = width / 2f
+            // [필살기] 텍스트가 칸 정중앙에 똬악 박히게 하는 마법의 공식!
+            val yPos = (itemHeight * i) + (itemHeight / 2f) - ((paint.descent() + paint.ascent()) / 2f)
+            canvas.drawText(drawList[i], xPos, yPos, paint)
         }
     }
 
 
 
-    // SideIndexView.kt 내부 onTouchEvent 수정
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        val itemHeight = height / indexList.size
-        val index = (event.y / itemHeight).toInt().coerceIn(0, indexList.size - 1)
+        // [핵심] 그릴 때 쓴 리스트랑 터치 계산할 리스트가 같아야 한다!
+        val drawList = if (indices.isNotEmpty()) indices else indexList.toList()
+        if (drawList.isEmpty()) return false
+
+        val itemHeight = height.toFloat() / drawList.size
+        val index = (event.y / itemHeight).toInt().coerceIn(0, drawList.size - 1)
 
         when (event.action) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                // [팩폭] 누르고 있을 때만 글자 쏴준다!
-                onIndexTouchListener?.invoke(indexList[index], true)
+                // [찰진] 리스너 호출!
+                onIndexTouchListener?.invoke(drawList[index], true)
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                // [핵심] 손 떼면 숨기라고 신호 보내라 이말이야 유남생?!?
-                onIndexTouchListener?.invoke(indexList[index], false)
+                onIndexTouchListener?.invoke(drawList[index], false)
             }
         }
         return true
