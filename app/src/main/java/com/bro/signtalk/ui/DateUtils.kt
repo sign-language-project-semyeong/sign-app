@@ -23,4 +23,10 @@ object DateUtils {
         // 3. [그 외] 그냥 날짜 찰지게 박아라!
         return SimpleDateFormat("yyyy년 M월 d일", Locale.KOREAN).format(targetCal.time)
     }
+    fun formatDateTime(timestamp: Long): String {
+        val date = Date(timestamp)
+        // 오전/오후 구분을 위해 Locale.KOREAN 필수다 유남생?!?
+        val sdf = SimpleDateFormat("a h:mm", Locale.KOREAN)
+        return sdf.format(date)
+    }
 }

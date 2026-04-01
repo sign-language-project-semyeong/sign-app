@@ -4,6 +4,13 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+
+    <FrameLayout
+        android:id="@+id/fragment_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@+id/bottom_navigation" />
+
     <ImageButton
         android:id="@+id/btn_main_more_menu"
         android:layout_width="48dp"
@@ -18,11 +25,17 @@
         android:elevation="10dp"
         app:tint="#000000" />
 
-    <FrameLayout
-        android:id="@+id/fragment_container"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_above="@+id/bottom_navigation" />
+    <ImageButton
+        android:id="@+id/btn_main_search"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentTop="true"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginTop="30dp"
+        android:layout_marginEnd="56dp"
+        android:src="@drawable/ic_search_thin"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        app:tint="#000000" />
 
     <View
         android:id="@+id/nav_divider"

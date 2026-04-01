@@ -75,13 +75,17 @@ class DialpadFragment : Fragment() {
             }
         }
 
-        // 1. [필살기] 영상 통화 버튼 리스너
+        // DialpadFragment.kt 수정본
+
+// 1. [필살기] 영상 통화 버튼 리스너
         videoBtn?.setOnClickListener {
             val phoneNumber = input.text.toString()
             if (phoneNumber.isNotEmpty()) {
                 Log.d("SignTalk", "$phoneNumber 브로에게 쌈뽕한 영상 통화 쏜다!")
-                // [쫀득] 비서실 소환해서 0.1초 만에 영상 통화 발신!
-                CallNavigation.startVideoCall(requireContext(), phoneNumber)
+
+                // [쫀득] startVideoCall이 아니라 makeVideoCall이다! 유남생?!?
+                CallNavigation.makeVideoCall(requireContext(), phoneNumber)
+
             } else {
                 showToast("번호부터 치고 눌러라 브@로! 유남생?!?")
             }

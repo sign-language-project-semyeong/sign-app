@@ -155,8 +155,7 @@ class RecentCallsAdapter(private var originalCalls: List<RecentCall>) :
                     Log.d("RecentCall", "$phoneNumber 브로에게 쌈뽕한 영상 통화 쏜다!")
 
                     // [쫀득] 우리가 만든 비서실 소환해서 0.1초 만에 영상 통화 발신!
-                    com.bro.signtalk.ui.CallNavigation.startVideoCall(context, phoneNumber, displayName)
-                }
+                    com.bro.signtalk.ui.CallNavigation.makeVideoCall(context, phoneNumber)                }
             }
 
             // 4. [클릭 이벤트] 리스트 클릭/롱클릭 처리

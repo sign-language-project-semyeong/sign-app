@@ -14,6 +14,7 @@ import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import com.bro.signtalk.R
 import com.bro.signtalk.data.model.Contact
+import com.bro.signtalk.ui.CallNavigation
 import com.google.android.material.bottomsheet.BottomSheetDialog
 
 class ContactsAdapter(private var originalContacts: List<Contact>) :
@@ -131,8 +132,7 @@ class ContactsAdapter(private var originalContacts: List<Contact>) :
 
                     // 영상 통화 (이미 잘 되어있지만 한 번 더 확인해라 브@로!)
                     holder.btnVideo.setOnClickListener {
-                        com.bro.signtalk.ui.CallNavigation.startVideoCall(context, contact.phoneNumber, contact.name)
-                    }
+                        CallNavigation.makeVideoCall(context, contact.phoneNumber)                    }
 
                     // 문자 메시지 (기존 유지)
                     holder.btnMessage.setOnClickListener {

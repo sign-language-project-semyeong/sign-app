@@ -21,19 +21,21 @@
             android:scaleType="centerCrop"
             android:src="@drawable/ic_default_profile"
             android:visibility="gone"
-            app:shapeAppearanceOverlay="@style/CircleStyle" /> <TextView
-        android:id="@+id/tv_profile_icon"
-        android:layout_width="45dp"
-        android:layout_height="45dp"
-        android:layout_marginTop="10dp"
-        android:layout_marginStart="10dp"
-        android:layout_marginEnd="10dp"
-        android:layout_marginBottom="10dp"
-        android:gravity="center"
-        android:background="@drawable/bg_circle_gray"
-        android:textColor="@color/white"
-        android:textSize="18sp"
-        android:visibility="visible" />
+            app:shapeAppearanceOverlay="@style/CircleStyle" />
+
+        <TextView
+            android:id="@+id/tv_profile_icon"
+            android:layout_width="45dp"
+            android:layout_height="45dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginStart="10dp"
+            android:layout_marginEnd="10dp"
+            android:layout_marginBottom="10dp"
+            android:gravity="center"
+            android:background="@drawable/bg_circle_gray"
+            android:textColor="@color/white"
+            android:textSize="18sp"
+            android:visibility="visible" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -82,7 +84,7 @@
         android:orientation="horizontal"
         android:gravity="center"
         android:layout_marginTop="15dp"
-        android:visibility="gone">
+        android:layout_marginBottom="12dp"  android:visibility="gone">
 
         <ImageButton
             android:id="@+id/btn_item_call"
@@ -111,6 +113,7 @@
             android:padding="10dp"
             app:tint="#FFFFFF" />
     </LinearLayout>
+
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"

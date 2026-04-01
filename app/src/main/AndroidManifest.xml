@@ -108,6 +108,11 @@
             <activity android:name=".ui.SettingsActivity" android:exported="false" />
             <activity android:name=".ui.SettingsSoundActivity" android:exported="false" />
             <activity android:name="com.yalantis.ucrop.UCropActivity" android:screenOrientation="portrait" android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
+            <activity
+                android:name=".ui.SearchActivity"
+                android:exported="false"
+                android:screenOrientation="portrait"
+                android:windowSoftInputMode="stateVisible" />
 
         </application>
     </manifest>

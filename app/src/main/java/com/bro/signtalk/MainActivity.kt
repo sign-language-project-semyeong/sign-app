@@ -105,19 +105,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // 클래스 상단 (onCreate 위쪽)에 이게 있어야 에러 안 난다 유남생?!?
-    private val requestPermissionsLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val allGranted = permissions.entries.all { it.value }
 
-        if (allGranted) {
-            Log.d(TAG, "기강 잡기 성공! 이제 대장 자리(Role) 받으러 간다 이말이야! ㅇㅇ.")
-            // [핵심] 권한 다 얻었을 때만 기본 앱 설정 팝업 소환!
-            checkDefaultDialerRole()
-        } else {
-            Toast.makeText(this, "권한 안 주면 전@화 대장 못 한다 브@로! 팍@씨!", Toast.LENGTH_SHORT).show()
-        }
-    }
 
     // MainActivity.kt 수정안
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -140,6 +128,14 @@ class MainActivity : AppCompatActivity() {
             popup.show()
         }
 
+        // MainActivity.kt 의 onCreate 내부
+        // MainActivity.kt
+        findViewById<View>(R.id.btn_main_search)?.setOnClickListener {
+            // [필살기] 검색 화면으로 0.1초 만에 점프!
+            val intent = Intent(this, com.bro.signtalk.ui.SearchActivity::class.java)
+            startActivity(intent)
+        }
+
         // 네비게이션 바 설정도 onCreate 뱃속에 얌전히 둬라 이말이야!
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation)
         if (savedInstanceState == null) loadFragment(DialpadFragment())
@@ -156,64 +152,79 @@ class MainActivity : AppCompatActivity() {
 
     // 3. [필살기] 화면이 확실히 뜰 때 권한 팝업을 멱@살 잡고 소환해라!
 // 팩폭: onCreate 바깥으로 완전히 독립시켜야 에러가 안 난다 유남생?!?
+    // MainActivity.kt 내부의 권한 확인 관련 함수들을 싹 다 이걸로 교체해라!
+
     override fun onResume() {
         super.onResume()
+        Log.d(TAG, "앱 화면 복귀! 권한 기강 0.1초 만에 다시 잡는다 이말이야!")
+
+        // 1. 다른 앱 위에 표시 권한부터 무조건 검문!
+        checkOverlayPermission()
+
+        // 2. 일반 권한 검문 (이게 통과되면 3번 대장 자리 검문으로 자동 연결된다!)
         checkAndRequestPermissions()
     }
 
-    // [쌈뽕] 연락처랑 통화 권한이 있는지 확인하고 없으면 멱살 잡고 요청하는 함수다 이말이야!
     private fun checkAndRequestPermissions() {
         val permissions = arrayOf(
             android.Manifest.permission.READ_CONTACTS,
             android.Manifest.permission.CALL_PHONE,
-            android.Manifest.permission.READ_PHONE_STATE
+            android.Manifest.permission.READ_PHONE_STATE,
+            android.Manifest.permission.CAMERA,       // [쫀득] 영상통화 하려면 카메라도!
+            android.Manifest.permission.RECORD_AUDIO  // [쫀득] 마이크도 여기서 한 번에!
         )
 
-        // 권한 없는 놈들만 골라내기!
         val missingPermissions = permissions.filter {
             checkSelfPermission(it) != android.content.pm.PackageManager.PERMISSION_GRANTED
         }.toTypedArray()
 
         if (missingPermissions.isNotEmpty()) {
-            // [쫀득] 아까 만든 requestPermissionsLauncher로 쏜다!
+            // 권한이 하나라도 없으면 멱살 잡고 요청 팝업!
             requestPermissionsLauncher.launch(missingPermissions)
-            Log.d(TAG, "부@족한 권한들 떼거지로 요청 보냈다 이말이야 ㅇㅇ.")
         } else {
-            Log.d(TAG, "이미 권한 기강 다 잡혀있다 브@로! 통과!")
+            // [핵심/팩폭] 일반 권한이 다 있다면, 대장(기본 앱) 자리 안 뺏겼는지 확인해라!
+            // 옛날엔 이 코드가 없어서 팝업이 안 떴던 거다 이말이야!
+            checkDefaultDialerRole()
         }
     }
 
-    // [쌈뽕] 필요한 권한들 한꺼번에 멱살 잡고 요청하는 런처!
+    private val requestPermissionsLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.entries.all { it.value }
+        if (allGranted) {
+            // 권한 방금 다 받았으면, 바로 이어서 대장 자리 팝업 똬악!
+            checkDefaultDialerRole()
+        } else {
+            Toast.makeText(this, "권한 안 주면 전@화 못 한다 브@로! 설정 가서 켜라 팍@씨!", Toast.LENGTH_LONG).show()
+        }
+    }
 
-
-    // [핵심/팩폭] 중복됐던 함수 하나로 통합! 두 번 쓰지 마라 브로!
     private fun checkDefaultDialerRole() {
         val telecomManager = getSystemService(Context.TELECOM_SERVICE) as TelecomManager
 
-        // [팩폭] 이미 대장이면 다시 부를 필요 없다!
+        // 이미 내가 굳건한 대장이면 얌전히 엔진만 가동해라!
         if (telecomManager.defaultDialerPackage == packageName) {
-            Log.d(TAG, "이미 내가 대장이다 이말이야! ㅇㅇ.")
+            Log.d(TAG, "임명장 확인 완@료! 내가 여전히 대장이다 ㅇㅇ.")
             setupCoreTelecom()
             return
         }
 
-        // [쌈뽕] 안드로이드 10(Q) 이상은 RoleManager로 멱살 잡아야 한다!
+        // [쌈뽕] 대장 자리 뺏겼으면 묻지도 따지지도 않고 팝업 소환!
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val roleManager = getSystemService(Context.ROLE_SERVICE) as RoleManager
             if (!roleManager.isRoleHeld(RoleManager.ROLE_DIALER)) {
+                Log.d(TAG, "대장 자리 뺏겼다! 다시 내놓으라고 RoleManager 팝업 쏜다!")
                 val intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_DIALER)
-                roleRequestLauncher.launch(intent) // [쫀득] 팝업 똬악!
-                Log.d(TAG, "RoleManager로 팝업 소환 발사! 유남생?!?")
+                roleRequestLauncher.launch(intent)
             }
-            // MainActivity.kt 수정
         } else {
-            // 안드로이드 10 미만은 RoleManager가 없으니깐 구식 시스템 방식으로 띄우는 거다!
-            val intent = Intent(this, CallActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                // [팩폭] 여기엔 'call' 객체가 없다! 그냥 빈 값이나 넘겨라!
-                putExtra("receiver_phone", "")
+            // [팩폭] 안드로이드 10 미만 구형 기기용 기본 앱 설정 팝업이다!
+            // 옛날 코드엔 빈 화면 띄우는 이상한 코드가 있었는데 이거 써야 진짜 팝업이 뜬다 유남생?!?
+            val intent = Intent(TelecomManager.ACTION_CHANGE_DEFAULT_DIALER).apply {
+                putExtra(TelecomManager.EXTRA_CHANGE_DEFAULT_DIALER_PACKAGE_NAME, packageName)
             }
-            startActivity(intent)
+            startActivityForResult(intent, 1004)
         }
     }
 
