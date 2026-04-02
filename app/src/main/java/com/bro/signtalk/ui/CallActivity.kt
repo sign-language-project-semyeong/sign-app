@@ -18,7 +18,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.bro.signtalk.R
 import com.bro.signtalk.service.SignCallService
-import com.bro.signtalk.ui.contacts.VideoCallActivity // 패키지 경로 확인해라 브로!
+import com.bro.signtalk.ui.contacts.VideoCallActivity
 
 class CallActivity : AppCompatActivity() {
 
@@ -26,7 +26,7 @@ class CallActivity : AppCompatActivity() {
     private var isSpeakerOn = false
     private var isMuted = false
 
-    // [쫀득] 모든 신호를 낚아채는 통합 수신기다 이말이야!
+    // 수신기는 이거 하나면 충분하다 팍씨!
     private val callReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
@@ -47,7 +47,8 @@ class CallActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // [쌈뽕] 잠금화면 뚫고 나오는 설정은 필수다 이말이야!
+        super.onCreate(savedInstanceState) // 딱 한 번만 불러라!
+
         window.addFlags(
             WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
                     WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
@@ -55,15 +56,20 @@ class CallActivity : AppCompatActivity() {
                     WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
         )
 
-        super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_call)
 
-        // [팩폭] 리시버 등록할 때 오타('signtalk') 주의해라!
+        // 두 가지 신호를 모두 잡는 찰진 필터!
         val filter = IntentFilter().apply {
             addAction("com.bro.signtalk.CALL_ENDED")
             addAction("com.bro.signtalk.CALL_STARTED")
         }
-        ContextCompat.registerReceiver(this, callReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+
+        ContextCompat.registerReceiver(
+            this,
+            callReceiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
 
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
@@ -83,21 +89,18 @@ class CallActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.tv_call_name).text = displayName
         findViewById<TextView>(R.id.tv_call_number).text = number
 
-        // 1. 스피커폰 (InCallActivity의 로직을 쫀득하게 이식!)
         findViewById<View>(R.id.btn_speaker).setOnClickListener {
             isSpeakerOn = !isSpeakerOn
             it.isSelected = isSpeakerOn
             setSpeakerphone(isSpeakerOn)
         }
 
-        // 2. 뮤트 (마이크 차단)
         findViewById<View>(R.id.btn_mute).setOnClickListener {
             isMuted = !isMuted
             audioManager.isMicrophoneMute = isMuted
             it.isSelected = isMuted
         }
 
-        // 3. 키패드 토글 (애니메이션 기강 잡아라!)
         findViewById<View>(R.id.btn_keypad).setOnClickListener {
             val dialpad = findViewById<View>(R.id.layout_dialpad)
             if (dialpad.visibility == View.GONE) {
@@ -118,11 +121,9 @@ class CallActivity : AppCompatActivity() {
             }
         }
 
-        // 4. 영상 통화 전환 (필살기!)
         findViewById<View>(R.id.btn_video)?.setOnClickListener {
             SignCallService.currentCall?.let { call ->
                 Log.d("Call", "음성에서 영상으로 변신! ㅇㅇ.")
-                // 시스템에 영상 모드 응답 쏴라!
                 call.answer(android.telecom.VideoProfile.STATE_BIDIRECTIONAL)
 
                 val intent = Intent(this, VideoCallActivity::class.java).apply {
@@ -137,7 +138,6 @@ class CallActivity : AppCompatActivity() {
 
         setupKeypad()
 
-        // 5. 종료 버튼 (통화 세션 확실히 끊어라!)
         findViewById<View>(R.id.btn_hangup).setOnClickListener {
             SignCallService.currentCall?.disconnect()
             finish()
@@ -173,9 +173,20 @@ class CallActivity : AppCompatActivity() {
         } ?: phoneNumber
     }
 
+    override fun onResume() {
+        super.onResume()
+        com.bro.signtalk.service.SignCallService.CallScreenTracker.isVisible = true
+    }
+
+    override fun onPause() {
+        super.onPause()
+        com.bro.signtalk.service.SignCallService.CallScreenTracker.isVisible = false
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         audioManager.mode = AudioManager.MODE_NORMAL
+        // 해지할 때도 이거 하나면 끝이다 이말이야!
         try { unregisterReceiver(callReceiver) } catch (e: Exception) { }
     }
 }

@@ -215,29 +215,39 @@ class ContactsFragment : Fragment() {
         }
     }
 
+    // [핵심] ContactsFragment.kt 내부의 fetchContacts() 함수를 이걸로 통째로 갈아 끼워라!
     private fun fetchContacts(): List<Contact> {
         val contactList = mutableListOf<Contact>()
+
+        // [쫀득] Projection에 PHOTO_URI를 똬악 추가해서 프사까지 캐오라고 명령해라!
         val projection = arrayOf(
             ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
             ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
             ContactsContract.CommonDataKinds.Phone.NUMBER,
-            ContactsContract.CommonDataKinds.Phone.STARRED
+            ContactsContract.CommonDataKinds.Phone.STARRED,
+            ContactsContract.CommonDataKinds.Phone.PHOTO_URI // [필살기] 프사 경로!
         )
+
         val cursor = requireContext().contentResolver.query(
             ContactsContract.CommonDataKinds.Phone.CONTENT_URI, projection, null, null, null
         )
+
         cursor?.use {
             val nameIndex = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
             val numberIndex = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
             val starredIndex = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.STARRED)
             val idIndex = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
+            val photoUriIndex = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_URI) // 인덱스 찾기!
 
             while (it.moveToNext()) {
                 val id = it.getString(idIndex) ?: ""
                 val name = it.getString(nameIndex) ?: "이름 없음"
                 val number = it.getString(numberIndex) ?: ""
                 val isFavorite = it.getInt(starredIndex) > 0
-                contactList.add(Contact(id, name, number, isFavorite = isFavorite))
+                val photoUri = it.getString(photoUriIndex) // [쌈뽕] 경로 캐오기 완료!
+
+                // Contact 모델에 photoUri까지 찰지게 담아서 리스트에 던져라!
+                contactList.add(Contact(id, name, number, photoUri = photoUri, isFavorite = isFavorite))
             }
         }
         return contactList.sortedWith(compareByDescending<Contact> { it.isFavorite }.thenBy { it.name })

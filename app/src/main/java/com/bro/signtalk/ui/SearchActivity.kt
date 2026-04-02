@@ -122,11 +122,17 @@ class SearchActivity : AppCompatActivity() {
     // SearchActivity.kt 수정본
 
     private fun performSearch(query: String) {
-        currentSearchQuery = query // [핵심] 이거 안 써줘서 스크롤이 파@업한 거다 팍@씨!
+        currentSearchQuery = query
         callLogOffset = 0
 
+        // [쫀득] 사용자가 친 검색어에서 하이픈 싹 다 걷어내라 팍씨!
+        val cleanQuery = query.replace("-", "")
+
         val filtered = allContacts.filter {
-            it.name.contains(query, ignoreCase = true) || it.phoneNumber.contains(query)
+            // [핵심] 주소록 번호에서도 하이픈 빼고 알맹이끼리만 비교하는 마법이다 이말이야!
+            val cleanPhoneNumber = it.phoneNumber.replace("-", "")
+
+            it.name.contains(query, ignoreCase = true) || cleanPhoneNumber.contains(cleanQuery)
         }
 
         if (filtered.isEmpty()) {
@@ -144,7 +150,6 @@ class SearchActivity : AppCompatActivity() {
         rvResults.visibility = View.VISIBLE
 
         val topMatch = sortedResults.first()
-        // [쌈뽕] 이제 20개 던져도 에러 안 난다 이말이야!
         val recentCalls = getRecentCallsObjects(topMatch.phoneNumber, 20)
 
         searchAdapter.updateData(sortedResults, recentCalls)
@@ -225,8 +230,16 @@ class SearchActivity : AppCompatActivity() {
         // searchAdapter.setHistoryMode(history)
     }
 
+    // ... 기존 showSearchHistory, hideKeyboard 함수 유지 ...
+
     private fun hideKeyboard() {
         val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
         imm.hideSoftInputFromWindow(searchInput.windowToken, 0)
+    }
+
+    // [핵심] XML에서 애타게 찾던 그 함수다 팍씨! 이거 없어서 앱이 죽은 거다!
+    fun onBackButtonClicked(view: View) {
+        hideKeyboard() // [쫀득] 닫기 전에 키보드 싹바가지 없게 떠 있는 거 닫아주고!
+        finish() // [쌈뽕] 뒤로 가기 눌렀으니까 화면 찰지게 닫아라 이말이야!
     }
 }

@@ -27,6 +27,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.MANAGE_ONGOING_CALLS" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
 
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
@@ -108,11 +110,12 @@
             <activity android:name=".ui.SettingsActivity" android:exported="false" />
             <activity android:name=".ui.SettingsSoundActivity" android:exported="false" />
             <activity android:name="com.yalantis.ucrop.UCropActivity" android:screenOrientation="portrait" android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
+            <activity android:name=".ui.SettingsSpeedDialActivity" android:exported="false" />
             <activity
                 android:name=".ui.SearchActivity"
                 android:exported="false"
                 android:screenOrientation="portrait"
                 android:windowSoftInputMode="stateVisible" />
-
+            <activity android:name=".ui.IncomingVideoCallActivity" android:screenOrientation="portrait" android:launchMode="singleTop" android:showOnLockScreen="true" android:showWhenLocked="true" android:turnScreenOn="true" android:exported="false" android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
         </application>
     </manifest>

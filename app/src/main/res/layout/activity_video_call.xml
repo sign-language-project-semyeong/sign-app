@@ -73,8 +73,24 @@
         <ImageButton android:id="@+id/btn_camera_toggle" android:layout_width="60dp" android:layout_height="60dp" android:src="@drawable/ic_video" android:background="?attr/selectableItemBackgroundBorderless" android:layout_weight="1"/>
         <ImageButton android:id="@+id/btn_switch_camera" android:layout_width="60dp" android:layout_height="60dp" android:src="@drawable/ic_switch_camera" android:background="?attr/selectableItemBackgroundBorderless" android:layout_weight="1"/>
         <ImageButton android:id="@+id/btn_hangup" android:layout_width="70dp" android:layout_height="70dp" android:src="@drawable/ic_call" android:background="@drawable/bg_hangup_btn" android:layout_weight="1.2" />
-        <ImageButton android:id="@+id/btn_mute" android:layout_width="60dp" android:layout_height="60dp" android:src="@android:drawable/stat_notify_call_mute" android:background="?attr/selectableItemBackgroundBorderless" android:layout_weight="1"/>
-        <ImageButton android:id="@+id/btn_speaker" android:layout_width="60dp" android:layout_height="60dp" android:src="@drawable/ic_speaker" android:background="?attr/selectableItemBackgroundBorderless" android:layout_weight="1"/>
+
+        <ImageButton
+            android:id="@+id/btn_mute"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_mic_off"
+            app:tint="#FFFFFF" android:alpha="0.4" android:scaleType="centerInside" />
+
+        <ImageButton
+            android:id="@+id/btn_speaker"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_speaker"
+            app:tint="#FFFFFF"
+            android:alpha="0.4" android:scaleType="centerInside" />
+
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

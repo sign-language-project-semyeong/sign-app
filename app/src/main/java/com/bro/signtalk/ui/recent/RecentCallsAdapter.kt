@@ -170,17 +170,101 @@ class RecentCallsAdapter(private var originalCalls: List<RecentCall>) :
                 }
             }
 
+            // RecentCallsAdapter.kt 안의 onBindViewHolder 내부 롱클릭 리스너를 이렇게 갈아엎어라!
             holder.itemView.setOnLongClickListener {
                 if (!isSelectMode) {
                     isSelectMode = true
                     selectListener?.onStartSelectMode()
-                    toggleSelection(item, position)
+
+                    // [쫀득] 일단 길게 누른 녀석부터 선택 목록에 똬악 넣어주고!
+                    selectedItems.add(item as RecentCall)
+                    selectListener?.onSelectionChanged(selectedItems.size)
+
+                    // [핵심] 이거 안 넣어서 여태 파업한 거다! 전체 새로고침 때려서 당장 다 흐릿하게 만들어라 팍씨!
+                    notifyDataSetChanged()
                 }
                 true
             }
 
         } else if (holder is SectionViewHolder) {
             holder.tvLabel.text = item as String
+
+        } else if (holder is HeaderViewHolder) {
+            holder.btnCalendar?.setOnClickListener {
+                val context = holder.itemView.context
+
+                // 1. [팩폭] 기록이 있는 날짜들만 싹 다 긁어모아라! (시작 시간 기준)
+                val recordedTimestamps = items.filterIsInstance<com.bro.signtalk.data.model.RecentCall>()
+                    .map { call ->
+                        val cal = java.util.Calendar.getInstance().apply {
+                            timeInMillis = call.timestamp
+                            set(java.util.Calendar.HOUR_OF_DAY, 0)
+                            set(java.util.Calendar.MINUTE, 0)
+                            set(java.util.Calendar.SECOND, 0)
+                            set(java.util.Calendar.MILLISECOND, 0)
+                        }
+                        cal.timeInMillis
+                    }.toSet()
+
+                // 2. [쫀득] 기록 있는 날만 선택 가능하게 검문소 세우기!
+                val constraints = com.google.android.material.datepicker.CalendarConstraints.Builder()
+                    .setValidator(object : com.google.android.material.datepicker.CalendarConstraints.DateValidator {
+                        override fun isValid(date: Long): Boolean {
+                            // UTC 기준 날짜를 로컬 0시로 변환해서 비교해야 찰지게 맞는다!
+                            val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
+                                timeInMillis = date
+                            }
+                            val localCal = java.util.Calendar.getInstance().apply {
+                                set(cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH), cal.get(java.util.Calendar.DAY_OF_MONTH), 0, 0, 0)
+                                set(java.util.Calendar.MILLISECOND, 0)
+                            }
+                            return recordedTimestamps.contains(localCal.timeInMillis)
+                        }
+                        override fun writeToParcel(dest: android.os.Parcel, flags: Int) {}
+                        override fun describeContents(): Int = 0
+                    })
+                    .build()
+
+                // 3. [쌈뽕] MaterialDatePicker 소환!
+                val datePicker = com.google.android.material.datepicker.MaterialDatePicker.Builder.datePicker()
+                    .setTitleText("기록 있는 날짜만 골라라 브@로!")
+                    .setCalendarConstraints(constraints)
+                    .setTheme(R.style.CustomMaterialCalendar) // 테마로 색깔 기강 잡기!
+                    .build()
+
+                datePicker.addOnPositiveButtonClickListener { selection ->
+                    val calendar = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
+                        timeInMillis = selection
+                    }
+                    // 이동 로직 호출!
+                    moveToDate(holder, calendar.get(java.util.Calendar.YEAR), calendar.get(java.util.Calendar.MONTH), calendar.get(java.util.Calendar.DAY_OF_MONTH))
+                }
+
+                datePicker.show((context as androidx.fragment.app.FragmentActivity).supportFragmentManager, "DATE_PICKER")
+            }
+        }
+    }
+
+
+    private fun moveToDate(holder: RecyclerView.ViewHolder, year: Int, month: Int, day: Int) {
+        val targetCal = java.util.Calendar.getInstance().apply {
+            set(year, month, day, 0, 0, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+        val startOfDay = targetCal.timeInMillis
+        targetCal.set(year, month, day, 23, 59, 59)
+        val endOfDay = targetCal.timeInMillis
+
+        val targetIndex = items.indexOfFirst {
+            it is com.bro.signtalk.data.model.RecentCall && it.timestamp in startOfDay..endOfDay
+        }
+
+        if (targetIndex != -1) {
+            val offsetPx = (15 * holder.itemView.context.resources.displayMetrics.density).toInt()
+            val rv = (holder.itemView.context as? android.app.Activity)?.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.recent_calls_recycler)
+            (rv?.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)?.scrollToPositionWithOffset(targetIndex - 1, offsetPx)
+        } else {
+            android.widget.Toast.makeText(holder.itemView.context, "그 날엔 전@화 기록이 없다니깐?!? 팍씨!", android.widget.Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -197,7 +281,7 @@ class RecentCallsAdapter(private var originalCalls: List<RecentCall>) :
         isSelectMode = false
         selectedItems.clear()
         selectListener?.onEndSelectMode()
-        notifyDataSetChanged()
+        notifyDataSetChanged() // 나갈 때도 원래 색으로 싹 다 돌려놔야 할 거 아니냐?!?
     }
 
     fun deleteSelectedItems(context: Context) {
@@ -259,8 +343,9 @@ class RecentCallsAdapter(private var originalCalls: List<RecentCall>) :
         }
     }
 
-    class HeaderViewHolder(view: View) : RecyclerView.ViewHolder(view)
-    class SectionViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+    class HeaderViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val btnCalendar: android.widget.ImageView? = view.findViewById(R.id.btn_calendar_search)
+    }    class SectionViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val tvLabel: TextView = view.findViewById(R.id.tv_section_label)
     }
     class RecentCallViewHolder(view: View) : RecyclerView.ViewHolder(view) {

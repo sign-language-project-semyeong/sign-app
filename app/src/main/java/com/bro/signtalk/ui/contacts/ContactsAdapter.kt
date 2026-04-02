@@ -243,7 +243,7 @@ class ContactsAdapter(private var originalContacts: List<Contact>) :
             .show()
     }
 
-    // 2. [필살기] 즐겨찾기 로직도 똑같이 갱신해라!
+    // ContactsAdapter.kt 의 toggleFavorite 함수를 이@렇게 바꿔라!
     private fun toggleFavorite(context: Context, contact: Contact, position: Int) {
         try {
             val contentResolver = context.contentResolver
@@ -259,10 +259,11 @@ class ContactsAdapter(private var originalContacts: List<Contact>) :
             )
 
             if (updatedRows > 0) {
-                // [쫀득] 원본 데이터에서 즐겨찾기 상태만 찰지게 변경!
+                // [쫀득] 원본 데이터에서 즐겨찾기 상태만 바꾼 뒤에 다시 찰지게 정렬해라!
                 val newContacts = originalContacts.map {
                     if (it.id == contact.id) it.copy(isFavorite = (newStarred == 1)) else it
-                }
+                }.sortedWith(compareByDescending<Contact> { it.isFavorite }.thenBy { it.name }) // [핵심] 정렬 추가!
+
                 updateItems(newContacts) // 전체 리스트 다시 정렬해서 똬악!
                 Toast.makeText(context, "즐겨찾기 쌈뽕하게 변경 완료!", Toast.LENGTH_SHORT).show()
             }

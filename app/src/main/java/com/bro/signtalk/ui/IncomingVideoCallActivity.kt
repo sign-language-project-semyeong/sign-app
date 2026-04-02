@@ -14,11 +14,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.bro.signtalk.R
 import com.bro.signtalk.service.SignCallService
+import com.bro.signtalk.ui.contacts.VideoCallActivity
 
-class IncomingCallActivity : AppCompatActivity() {
+class IncomingVideoCallActivity : AppCompatActivity() {
 
     private var initialX = 0f
-    // [핵심] 번호 변수를 클래스 전역으로 격상!
     private var phoneNumber: String = ""
 
     private val callEndedReceiver = object : android.content.BroadcastReceiver() {
@@ -29,34 +29,38 @@ class IncomingCallActivity : AppCompatActivity() {
         }
     }
 
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // ... (잠금화면 설정 코드 기존 유지) ...
-        setContentView(R.layout.activity_incoming_call)
+        window.addFlags(
+            android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+                    android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                    android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+                    android.view.WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+        )
+        setContentView(R.layout.activity_incoming_video_call)
 
-        // [쫀득] 데이터 멱살 잡기
         phoneNumber = intent.getStringExtra("receiver_phone") ?: ""
         val displayName = if (phoneNumber.isNotEmpty()) getContactName(phoneNumber) else "알 수 없는 브@로"
 
         findViewById<TextView>(R.id.tv_incoming_name).text = displayName
         findViewById<TextView>(R.id.tv_incoming_number)?.text = phoneNumber
 
-        // [팩폭] 아래 코드는 XML에 btn_answer가 없으니깐 싹 다 지워버려라!
-        // findViewById<View>(R.id.btn_answer)?.setOnClickListener { ... } <- 삭제!
-
-        // [핵심] 오직 슬라이드 핸들(iv_swipe_handle)로만 승부한다!
         val handle = findViewById<ImageView>(R.id.iv_swipe_handle)
         setupSwipeListener(handle)
+
+        // [쫀득] 리시버 달아서 중간에 끊기면 바로 닫히게 기강 잡아라!
         val filter = android.content.IntentFilter("com.bro.signtalk.CALL_ENDED")
         androidx.core.content.ContextCompat.registerReceiver(this, callEndedReceiver, filter, androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
     }
 
-    // [쌈뽕] 공통 응답 로직 엔진
     private fun answerCall() {
-        SignCallService.currentCall?.answer(android.telecom.VideoProfile.STATE_AUDIO_ONLY)
-        val intent = Intent(this, CallActivity::class.java).apply {
+        // [핵심] 영상통화니까 여기서 BIDIRECTIONAL로 대답해야 안 튕긴다 이말이야!
+        SignCallService.currentCall?.answer(android.telecom.VideoProfile.STATE_BIDIRECTIONAL)
+        val intent = Intent(this, VideoCallActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            putExtra("receiver_phone", phoneNumber) // 클래스 변수 사용!
+            putExtra("receiver_phone", phoneNumber)
         }
         startActivity(intent)
         finish()
@@ -74,9 +78,8 @@ class IncomingCallActivity : AppCompatActivity() {
                 MotionEvent.ACTION_UP -> {
                     val finalDiff = event.rawX - initialX
                     when {
-                        finalDiff > 200 -> answerCall() // [찰진] 통합 엔진 호출!
+                        finalDiff > 200 -> answerCall()
                         finalDiff < -200 -> {
-                            // [핵심] API 레벨 30 안 따지는 쌈뽕한 disconnect!
                             SignCallService.currentCall?.disconnect()
                             finish()
                         }
@@ -88,7 +91,7 @@ class IncomingCallActivity : AppCompatActivity() {
             }
         }
     }
-    // ... (getContactName, onDestroy 기존 유지) ...
+
     private fun getContactName(phoneNumber: String): String {
         val uri = android.net.Uri.withAppendedPath(
             android.provider.ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
@@ -100,7 +103,6 @@ class IncomingCallActivity : AppCompatActivity() {
         } ?: phoneNumber
     }
 
-    // 3. 생명주기 관리! 화면에 들어오면 팝업 끄고, 나가면 팝업 켜게 신호 쏴라!
     override fun onResume() {
         super.onResume()
         com.bro.signtalk.service.SignCallService.CallScreenTracker.isVisible = true

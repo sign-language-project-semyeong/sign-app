@@ -48,7 +48,8 @@ dependencies {
 
     // [핵심] 이거 하나면 충분하다 이말이야! 중복된 com.github...은 지워버려!
     implementation("io.github.webrtc-sdk:android:125.6422.06.1")
-
+    implementation("com.google.android.material:material:1.9.0")
+// 최신 버전으로 기강 잡아라!
     implementation("com.github.yalantis:ucrop:2.2.8")
 
     testImplementation(libs.junit)

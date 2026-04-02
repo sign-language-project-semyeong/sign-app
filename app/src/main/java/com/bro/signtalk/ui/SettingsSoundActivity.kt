@@ -1,24 +1,38 @@
 package com.bro.signtalk.ui
 
+import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
+import android.media.Ringtone
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.*
+import android.provider.Settings
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
 import com.bro.signtalk.R
-import android.provider.Settings
+
 class SettingsSoundActivity : AppCompatActivity() {
 
     private lateinit var audioManager: AudioManager
     private lateinit var vibrator: Vibrator
     private var currentRingtoneUri: Uri? = null
 
-    // 1. [필살기] 벨소리 선택 후 돌아오는 배달 기사!
+    private var previewRingtone: Ringtone? = null
+
+    private val filePickerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            result.data?.data?.let { uri ->
+                showPreviewDialog(uri)
+            }
+        }
+    }
+
     private val ringtoneLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -26,20 +40,7 @@ class SettingsSoundActivity : AppCompatActivity() {
             val uri = result.data?.getParcelableExtra<Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
             uri?.let {
                 currentRingtoneUri = it
-
-                // [필살기] 시스템 설정 변경 권한이 있는지 0.1초 만에 확인!
-                if (Settings.System.canWrite(this)) {
-                    // [쫀득] 드디어 진짜 시스템 벨소리를 똬악 갈아치운다!
-                    RingtoneManager.setActualDefaultRingtoneUri(this, RingtoneManager.TYPE_RINGTONE, it)
-                    Toast.makeText(this, "시스템 벨소리 쌈뽕하게 변경 완료!", Toast.LENGTH_SHORT).show()
-                } else {
-                    // [팩폭] 권한 없으면 설정 화면으로 0.1초 만에 보낸다!
-                    val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
-                        data = Uri.parse("package:$packageName")
-                    }
-                    startActivity(intent)
-                    Toast.makeText(this, "설정 변경 권한부터 줘라 브@로!", Toast.LENGTH_SHORT).show()
-                }
+                applyRingtone(it)
             }
         }
     }
@@ -48,7 +49,6 @@ class SettingsSoundActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings_sound)
 
-        // [쫀득] 매니저들 초기화 똬악!
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
@@ -66,67 +66,195 @@ class SettingsSoundActivity : AppCompatActivity() {
         val soundSwitch = findViewById<SwitchCompat>(R.id.switch_sound_enable)
         val ringtoneBtn = findViewById<Button>(R.id.btn_select_ringtone)
         val volumeSeekBar = findViewById<SeekBar>(R.id.seekbar_volume)
+        val tvVolumeLevel = findViewById<TextView>(R.id.tv_volume_level)
 
-        // 소리 모드 상태 반영
-        soundSwitch.isChecked = audioManager.ringerMode == AudioManager.RINGER_MODE_NORMAL
+        soundSwitch.isChecked = audioManager.ringerMode != AudioManager.RINGER_MODE_SILENT
 
-        soundSwitch.setOnCheckedChangeListener { _, isChecked ->
-            // [팩폭] 스위치 끄면 무음 모드 진입이다 유남생?!?
-            audioManager.ringerMode = if (isChecked) AudioManager.RINGER_MODE_NORMAL else AudioManager.RINGER_MODE_SILENT
-        }
+        soundSwitch.setOnCheckedChangeListener { buttonView, isChecked ->
+            // [쫀득] 다른 거 만지면 노래 바로 꺼라 팍씨!
+            previewRingtone?.stop()
 
-        // 벨소리 선택창 소환
-        ringtoneBtn.setOnClickListener {
-            val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
-                putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_RINGTONE)
-                putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "벨소리 골라라 브@로!")
-                putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, currentRingtoneUri)
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !notificationManager.isNotificationPolicyAccessGranted) {
+                buttonView.isChecked = !isChecked
+                Toast.makeText(this, "무음 모드 바꾸려면 방해 금지 권한 내놔라 브@로!", Toast.LENGTH_LONG).show()
+                startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+                return@setOnCheckedChangeListener
             }
-            ringtoneLauncher.launch(intent)
+
+            try {
+                audioManager.ringerMode = if (isChecked) AudioManager.RINGER_MODE_NORMAL else AudioManager.RINGER_MODE_SILENT
+            } catch (e: SecurityException) {
+                buttonView.isChecked = !isChecked
+                Toast.makeText(this, "권한 에러 났다 팍씨!", Toast.LENGTH_SHORT).show()
+            }
         }
 
-        // 볼륨 바 조절
-        volumeSeekBar.max = audioManager.getStreamMaxVolume(AudioManager.STREAM_RING)
-        volumeSeekBar.progress = audioManager.getStreamVolume(AudioManager.STREAM_RING)
+        ringtoneBtn.setOnClickListener {
+            // [쫀득] 여기도 버튼 누르는 순간 노래 컷!
+            previewRingtone?.stop()
+
+            val options = arrayOf("기본 벨소리 목록", "내 파일에서 직접 고르기")
+
+            AlertDialog.Builder(this)
+                .setTitle("어디서 가져올래 팍씨?!?")
+                .setItems(options) { _, which ->
+                    if (which == 0) {
+                        val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+                            putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_RINGTONE)
+                            putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "벨소리 골라라 브@로!")
+                            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+                            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+                            putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, currentRingtoneUri)
+                        }
+                        ringtoneLauncher.launch(intent)
+                    } else {
+                        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                            type = "audio/*"
+                        }
+                        filePickerLauncher.launch(intent)
+                    }
+                }
+                .show()
+        }
+
+        val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_RING)
+        volumeSeekBar.max = maxVolume
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            volumeSeekBar.min = 1
+        }
+
+        val currentVol = audioManager.getStreamVolume(AudioManager.STREAM_RING).coerceAtLeast(1)
+        volumeSeekBar.progress = currentVol
+        tvVolumeLevel.text = "벨소리 볼륨: ${currentVol}단계"
+
         volumeSeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (fromUser) audioManager.setStreamVolume(AudioManager.STREAM_RING, progress, 0)
+                val safeVolume = if (progress == 0) 1 else progress
+                tvVolumeLevel.text = "벨소리 볼륨: ${safeVolume}단계"
+
+                if (fromUser) {
+                    audioManager.setStreamVolume(AudioManager.STREAM_RING, safeVolume, 0)
+                    if (progress == 0 && Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+                        sb?.progress = 1
+                    }
+                }
             }
-            override fun onStartTrackingTouch(sb: SeekBar?) {}
-            override fun onStopTrackingTouch(sb: SeekBar?) {}
+
+            override fun onStartTrackingTouch(sb: SeekBar?) {
+                // [팩폭] 바에 다시 손가락 올리는 순간 부르던 노래 입 틀어막아라!
+                previewRingtone?.stop()
+            }
+
+            override fun onStopTrackingTouch(sb: SeekBar?) {
+                playVolumePreview()
+            }
         })
     }
 
     private fun setupVibrationSettings() {
-        val vibrateSwitch = findViewById<SwitchCompat>(R.id.switch_vibrate_enable)
-        val vibrationSeekBar = findViewById<SeekBar>(R.id.seekbar_vibration)
-        val vibrationText = findViewById<TextView>(R.id.tv_vibration_level)
+        val prefs = getSharedPreferences("SignTalkSettings", Context.MODE_PRIVATE)
+        val switchVib = findViewById<SwitchCompat>(R.id.switch_vibrate_enable)
+        val seekVib = findViewById<SeekBar>(R.id.seekbar_vibration)
+        val tvLevel = findViewById<TextView>(R.id.tv_vibration_level)
 
-        vibrationSeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+        val isEnabled = prefs.getBoolean("vibration_enabled", true)
+        val intensity = prefs.getInt("vibration_intensity", 2)
+
+        switchVib.isChecked = isEnabled
+        seekVib.progress = intensity
+        tvLevel.text = "진동 세기: ${intensity + 1}단계"
+
+        seekVib.isEnabled = isEnabled
+        tvLevel.alpha = if (isEnabled) 1.0f else 0.5f
+
+        switchVib.setOnCheckedChangeListener { _, isChecked ->
+            // [쌈뽕] 진동 건드려도 노래 얄짤없이 컷!
+            previewRingtone?.stop()
+
+            prefs.edit().putBoolean("vibration_enabled", isChecked).apply()
+            seekVib.isEnabled = isChecked
+            tvLevel.alpha = if (isChecked) 1.0f else 0.5f
+            if (isChecked) playVibration(seekVib.progress)
+        }
+
+        seekVib.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
-                // progress: 0, 1, 2, 3, 4 (5단계)
-                val level = progress + 1
-
-                // [필살기] 바를 옮길 때마다 텍스트도 쌈뽕하게 바꿔주기!
-                vibrationText.text = "진동 세기: ${level}단계"
-
-                if (fromUser && vibrateSwitch.isChecked) {
-                    // [쫀득] 단계별 세기 계산 (51, 102, ..., 255)
-                    val strength = (level * 51).coerceAtMost(255)
-
-                    // [찰진] 0.1초 동안 똬악 울려주기!
-                    val effect = VibrationEffect.createOneShot(100, strength)
-                    vibrator.vibrate(effect)
+                tvLevel.text = "진동 세기: ${progress + 1}단계"
+                if (fromUser && switchVib.isChecked) {
+                    prefs.edit().putInt("vibration_intensity", progress).apply()
                 }
             }
-            override fun onStartTrackingTouch(sb: SeekBar?) {}
-            override fun onStopTrackingTouch(sb: SeekBar?) {}
+            override fun onStartTrackingTouch(sb: SeekBar?) {
+                // [쌈뽕] 진동 바 건드려도 컷!
+                previewRingtone?.stop()
+            }
+            override fun onStopTrackingTouch(sb: SeekBar?) {
+                if (switchVib.isChecked) playVibration(sb?.progress ?: 2)
+            }
         })
+    }
 
-        // [팩폭] 진동 스위치 꺼져있으면 바 못 만지게 막는 것도 싹바가지 있는 UI다!
-        vibrateSwitch.setOnCheckedChangeListener { _, isChecked ->
-            vibrationSeekBar.isEnabled = isChecked
-            vibrationText.alpha = if (isChecked) 1.0f else 0.5f
+    private fun showPreviewDialog(uri: Uri) {
+        val ringtone = RingtoneManager.getRingtone(this, uri)
+        ringtone?.play()
+
+        AlertDialog.Builder(this)
+            .setTitle("이 노래로 할 거냐?!?")
+            .setMessage("지금 나오는 소리가 네가 설정한 볼륨이다 이말이야. 쌈뽕하면 적용 눌러라 유남생?!?")
+            .setPositiveButton("ㅇㅇ 적용") { _, _ ->
+                ringtone?.stop()
+                currentRingtoneUri = uri
+                applyRingtone(uri)
+            }
+            .setNegativeButton("ㄴㄴ 취소") { _, _ ->
+                ringtone?.stop()
+            }
+            .setOnCancelListener {
+                ringtone?.stop()
+            }
+            .show()
+    }
+
+    private fun applyRingtone(uri: Uri) {
+        if (Settings.System.canWrite(this)) {
+            RingtoneManager.setActualDefaultRingtoneUri(this, RingtoneManager.TYPE_RINGTONE, uri)
+            Toast.makeText(this, "벨소리 변경 완료! ㅇㅇ.", Toast.LENGTH_SHORT).show()
+        } else {
+            val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
+                data = Uri.parse("package:$packageName")
+            }
+            startActivity(intent)
+            Toast.makeText(this, "권한부터 줘라 브@로!", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun playVolumePreview() {
+        previewRingtone?.stop()
+        val defaultUri = RingtoneManager.getActualDefaultRingtoneUri(this, RingtoneManager.TYPE_RINGTONE)
+        previewRingtone = RingtoneManager.getRingtone(this, defaultUri)
+        previewRingtone?.play()
+
+        Handler(Looper.getMainLooper()).removeCallbacksAndMessages(null)
+        Handler(Looper.getMainLooper()).postDelayed({
+            previewRingtone?.stop()
+        }, 30000)
+    }
+
+    private fun playVibration(progress: Int) {
+        val amplitude = ((progress + 1) * 51).coerceAtMost(255)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(VibrationEffect.createOneShot(200, amplitude))
+        } else {
+            @Suppress("DEPRECATION")
+            vibrator.vibrate(200)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        previewRingtone?.stop()
     }
 }

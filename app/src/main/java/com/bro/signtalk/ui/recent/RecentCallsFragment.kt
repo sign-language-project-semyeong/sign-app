@@ -3,11 +3,15 @@ package com.bro.signtalk.ui.recent
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.provider.CallLog
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast // [핵심] 이거 없으면 Toast에서 빨간 줄 뜬다 이말이야!
+import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -17,10 +21,20 @@ import com.bro.signtalk.data.model.CallType
 import com.bro.signtalk.data.model.RecentCall
 import com.bro.signtalk.ui.DateUtils
 
-// [팩폭] Fragment 상속 안 받으면 넌 그냥 일반 클래스일 뿐이다 브로!
 class RecentCallsFragment : Fragment() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: RecentCallsAdapter
+    private lateinit var deleteModeFrame: LinearLayout
+    private lateinit var btnDeleteSelected: Button
+
+    // [필살기] 뒤로가기 버튼을 가로채는 쌈뽕한 콜백이다 이말이야!
+    private val backPressedCallback = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() {
+            if (::adapter.isInitialized && adapter.isSelectMode) {
+                adapter.exitSelectMode() // [쫀득] 냅다 끄지 말고 선택 모드만 예쁘게 종료시켜라!
+            }
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -32,26 +46,126 @@ class RecentCallsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         recyclerView = view.findViewById(R.id.recent_calls_recycler)
+        deleteModeFrame = view.findViewById(R.id.delete_mode_frame)
+        btnDeleteSelected = view.findViewById(R.id.btn_delete_selected)
+
+        // [핵심] 액티비티의 뒤로가기 시스템에 콜백을 똬악 달아놔라!
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, backPressedCallback)
+
+        deleteModeFrame.post {
+            val bottomNav = requireActivity().findViewById<View>(R.id.bottom_navigation)
+            if (bottomNav != null) {
+                val params = deleteModeFrame.layoutParams as android.widget.FrameLayout.LayoutParams
+                deleteModeFrame.layoutParams = params
+            }
+        }
+
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
         checkPermissionsAndLoad()
+
+        btnDeleteSelected.setOnClickListener {
+            if (::adapter.isInitialized) {
+                val selectedItems = adapter.selectedItems.toList()
+                deleteSelectedCalls(selectedItems)
+            }
+        }
+    }
+
+    private fun setupAdapterListener() {
+        adapter.selectListener = object : RecentCallsAdapter.OnSelectModeListener {
+            override fun onStartSelectMode() {
+                // 1. 뒤로가기 콜백 활성화! 이제부터 뒤로가기는 내가 통@제한다!
+                backPressedCallback.isEnabled = true
+
+                // 2. GONE 상태에서 벗어나게 해주고!
+                deleteModeFrame.visibility = View.VISIBLE
+
+                // 3. [팩폭] 뷰가 그려진 직후에(post) 애니메이션을 먹여야 첫 빵에도 안 씹히고 올라온다!
+                deleteModeFrame.post {
+                    deleteModeFrame.translationY = deleteModeFrame.height.toFloat()
+                    deleteModeFrame.animate().translationY(0f).setDuration(300).start()
+                }
+            }
+
+            override fun onSelectionChanged(count: Int) {
+                btnDeleteSelected.text = "${count}개 기록 삭제"
+            }
+
+            override fun onEndSelectMode() {
+                // 1. 볼일 끝났으면 뒤로가기 통제권 다시 돌@려주고!
+                backPressedCallback.isEnabled = false
+
+                // 2. 스르륵 바닥으로 꺼지게 찰지게 밀어 넣어라!
+                deleteModeFrame.animate()
+                    .translationY(deleteModeFrame.height.toFloat())
+                    .setDuration(300)
+                    .withEndAction {
+                        deleteModeFrame.visibility = View.GONE
+                    }.start()
+            }
+        }
+    }
+
+    private fun deleteSelectedCalls(selectedCalls: List<RecentCall>) {
+        if (selectedCalls.isEmpty()) return
+
+        var deletedCount = 0
+        for (call in selectedCalls) {
+            val selection = "${CallLog.Calls.NUMBER} = ? AND ${CallLog.Calls.DATE} = ?"
+            val selectionArgs = arrayOf(call.phoneNumber, call.timestamp.toString())
+
+            deletedCount += requireContext().contentResolver.delete(
+                CallLog.Calls.CONTENT_URI,
+                selection,
+                selectionArgs
+            )
+        }
+
+        if (deletedCount > 0) {
+            Toast.makeText(requireContext(), "${deletedCount}개 기록 찰@지게 삭제 완료!", Toast.LENGTH_SHORT).show()
+            loadRecentCalls()
+            adapter.exitSelectMode()
+        } else {
+            Toast.makeText(requireContext(), "삭제 실@패했다 이말이야!", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun checkPermissionsAndLoad() {
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_CALL_LOG)
-            == PackageManager.PERMISSION_GRANTED) {
+        // [팩폭] 지우려면 WRITE_CALL_LOG 권한도 필요하다! 같이 검문해라!
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.WRITE_CALL_LOG) == PackageManager.PERMISSION_GRANTED) {
+
             val realData = fetchCallLogs()
             adapter = RecentCallsAdapter(realData)
             recyclerView.adapter = adapter
+
+            // [핵심] 길게 눌렀을 때 버튼 프레임 띄우는 리스너 연결!
+            setupAdapterListener()
         } else {
-            requestPermissions(arrayOf(Manifest.permission.READ_CALL_LOG), 200)
+            requestPermissions(arrayOf(Manifest.permission.READ_CALL_LOG, Manifest.permission.WRITE_CALL_LOG), 200)
+        }
+    }
+
+
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 200 && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+            val realData = fetchCallLogs()
+            adapter = RecentCallsAdapter(realData)
+            recyclerView.adapter = adapter
+            setupAdapterListener()
         }
     }
 
     override fun onResume() {
         super.onResume()
         if (::adapter.isInitialized) {
-            loadRecentCalls()
-            Log.d("RecentCalls", "화면 복귀! 캘린더 날짜 쫀득하게 갱신 완료! ㅇㅇ.")
+            // [쫀득] 삭제 하려고 선택 중인데 화면 갱신돼서 초기화되는 거 막아라!
+            if (!adapter.isSelectMode) {
+                loadRecentCalls()
+                Log.d("RecentCalls", "화면 복귀! 캘린더 날짜 갱신 완료! ㅇㅇ.")
+            }
         }
     }
 
@@ -60,7 +174,7 @@ class RecentCallsFragment : Fragment() {
         adapter.updateItems(calls)
     }
 
-    // [필살기] 중복 삭제하고 캘린더 엔진 꽂은 이 녀석 하나만 남겨라!
+    // fetchCallLogs 함수는 브@로가 짠 거 그대로 유지하면 된다 이말이야!
     private fun fetchCallLogs(): List<RecentCall> {
         val callList = mutableListOf<RecentCall>()
         val cursor = try {
@@ -90,7 +204,6 @@ class RecentCallsFragment : Fragment() {
                     else -> CallType.INCOMING
                 }
 
-                // [쫀득] 아까 만든 DateUtils 엔진으로 캘린더 날짜 똬@악 낚아채기!
                 val dateGroup = DateUtils.getDateGroupName(timestamp)
 
                 callList.add(RecentCall(
